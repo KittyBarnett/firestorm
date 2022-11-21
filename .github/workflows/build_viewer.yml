@@ -88,7 +88,7 @@ jobs:
         destination_file: './dep/packages/'
 
     - name: Install autobuild
-      run: pip3 install "dep/autobuild"
+      run: pip3 install git+https://github.com/Nicky-D/autobuild@main_nd
 
     - name: Run autobuild configure (Mac)
       if: runner.os == 'macOS'
