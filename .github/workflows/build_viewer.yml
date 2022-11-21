@@ -80,10 +80,10 @@ jobs:
       shell: bash
 
     - name: Install certificate
-        env:
-          FS_CERT: ${{ secrets.FS_CERT }}
-          FS_CERT_PASS: ${{ secrets.FS_PASS }}
-          FS_KEYCHAIN_PASS: ${{ secrets.FS_KEYCHAIN_PASS }}
+      env:
+        FS_CERT: ${{ secrets.FS_CERT }}
+        FS_CERT_PASS: ${{ secrets.FS_PASS }}
+        FS_KEYCHAIN_PASS: ${{ secrets.FS_KEYCHAIN_PASS }}
       run: |
         mkdir -p ${build_secrets_checkout}/code-signing-osx
         echo -n "$FS_CERT" | base64 --decode --output ${build_secrets_checkout}/code-signing-osx/fs-cert.p12
