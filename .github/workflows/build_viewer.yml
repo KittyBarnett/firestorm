@@ -90,6 +90,9 @@ jobs:
     - name: Install autobuild
       run: pip3 install git+https://github.com/Nicky-D/autobuild@main_nd
 
+    - name: install autobuild
+      run: pip3 install llbase
+
     - name: Run autobuild configure (Mac)
       if: runner.os == 'macOS'
       run: autobuild configure --verbose -A ${{ env.ADDRESS_SIZE }} -c ${{ env.BUILD_CONFIG }} -- ${{ github.event.inputs.grid == 'secondlife' && '-DHAVOK_TPV=true --no-opensim' || '-DHAVOK_TPV=false --opensim' }} --package --chan "${{ env.VIEWER_CHANNEL }}"
