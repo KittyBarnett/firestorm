@@ -87,11 +87,14 @@ jobs:
         source_file: ${{ env.DEPENDENCIES_SRC_PATH }}/packages/*
         destination_file: './dep/packages/'
 
+    - name: Install Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+        architecture: 'x64'
+
     - name: Install autobuild
       run: pip3 install git+https://github.com/Nicky-D/autobuild@main_nd
-
-    - name: install autobuild
-      run: pip3 install llbase
 
     - name: Run autobuild configure (Mac)
       if: runner.os == 'macOS'
