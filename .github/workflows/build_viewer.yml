@@ -1,85 +1,113 @@
 name: Build viewer
-on: push
+
+on:
+  workflow_dispatch:
+    inputs:
+      operating_system:
+        required: true
+        type: choice
+        description: Operating system
+        options:
+        - macos-11
+      address_size:
+        required: true
+        type: choice
+        description: Address size
+        options:
+        - 64
+        - 32
+        default: 64
+      build_config:
+        required: true
+        description: Build configuration
+        default: 'ReleaseFS'
+      viewer_channel:
+        required: true
+        description: Viewer channel
+        default: 'Betax64'
+      grid:
+        required: true
+        type: choice
+        description: Grid
+        options:
+        - secondlife
+        - opensim
+
 env:
-  AUTOBUILD_VARIABLES_FILE: ${{github.workspace}}/build-variables/variables
-  EXTRA_ARGS: -DFMODSTUDIO=Off -DUSE_KDU=Off
+  AUTOBUILD_INSTALLABLE_CACHE: ${{github.workspace}}/dep/packages
+  AUTOBUILD_VARIABLES_FILE: ${{github.workspace}}/dep/build-variables/variables
+  ADDRESS_SIZE: ${{ github.event.inputs.address_size }}
+  BUILD_CONFIG: ${{ github.event.inputs.build_config }}
+  VIEWER_CHANNEL: ${{ github.event.inputs.viewer_channel }}
+
 jobs:
-  build_matrix:
-    strategy:
-      matrix:
-        os: [macos-11,ubuntu-18.04,windows-2022]
-        grid: [sl,os]
-        addrsize: [64,32]
-        exclude:
-          - os: ubuntu-18.04
-            addrsize: 32
-          - os: macos-11
-            addrsize: 32
-    runs-on: ${{ matrix.os }}
+  build:
+    runs-on: ${{ github.event.inputs.operating_system }}
+
     steps:
-        - name: Set OS flag
-          if: matrix.grid == 'os'
-          run: echo "FS_GRID=-DOPENSIM:BOOL=ON" >> $GITHUB_ENV
-          shell: bash
+    - name: Check out code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
-        - name: Set SL flag
-          if: matrix.grid == 'sl'
-          run: echo "FS_GRID=-DOPENSIM:BOOL=OFF" >> $GITHUB_ENV
-          shell: bash
-          
-        - name: Get the code
-          uses: actions/checkout@v3
-          with:
-            fetch-depth: 1
+    - name: Check out autobuild
+      uses: actions/checkout@v2
+      with:
+        repository: KittyBarnett/fs-autobuild
+        ref: main
+        path: 'dep/autobuild'
 
-        - name: Checkout build var
-          uses: actions/checkout@v3
-          with:
-            repository: FirestormViewer/fs-build-variables
-            path: build-variables
-        
-        - name: set VSVER for Windows builds
-          if: runner.os == 'Windows'
-          run: echo "AUTOBUILD_VSVER=170" >> $GITHUB_ENV
-          shell: bash
+    - name: Check out build-variables
+      uses: actions/checkout@v2
+      with:
+        repository: KittyBarnett/fs-build-variables
+        ref: main
+        path: 'dep/build-variables'
 
-        - name: Install required Ubuntu packages
-          if: runner.os == 'Linux'
-          run: sudo apt-get install python3-setuptools mesa-common-dev libgl1-mesa-dev libxinerama-dev libxrandr-dev libpulse-dev libglu1-mesa-dev
+    - name: Check out action-scp
+      uses: actions/checkout@v2
+      with:
+        repository: CatznipViewer/action-scp
+        ref: main
+        path: 'dep/action-scp'
 
-        - name: install autobuild
-          run: pip3 install git+https://github.com/Nicky-D/autobuild@main_nd
+    - name: Set environment variables
+      run: |
+        echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+        echo "DEPENDENCIES_SRC_PATH=/dependencies/${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+        echo "ARTIFACT_DST_PATH=/artifacts/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_ENV
+      shell: bash
 
-        - name: install autobuild
-          run: pip3 install llbase
+    - name: Download private packages
+      uses: ./dep/action-scp
+      with:
+        key: ${{ secrets.SCP_KEY }}
+        source_host: ${{ secrets.SCP_HOST }}
+        source_username: ${{ secrets.SCP_USER }}
+        source_file: ${{ env.DEPENDENCIES_SRC_PATH }}/packages/*
+        destination_file: './dep/packages/'
 
-        - name: Configure
-          run: autobuild configure -c ReleaseFS -A${{matrix.addrsize}} -- --package --chan ${{github.ref_name}} ${{env.EXTRA_ARGS}} ${{env.FS_GRID}}
-          shell: bash
-        
-        - name: build
-          run: autobuild build -c ReleaseFS -A${{matrix.addrsize}} --no-configure
-          shell: bash
+    - name: Install autobuild
+      run: pip3 install "dep/autobuild"
 
-        - name: publish ${{ matrix.os }} artifacts
-          if: runner.os == 'Windows'
-          uses: actions/upload-artifact@v3
-          with:
-            name: ${{ matrix.os }}-${{matrix.addrsize}}-${{matrix.grid}}-artifacts.zip
-            path: |
-              build-*/newview/Release/*Setup.exe
-              build-*/newview/Release/*.xz
+    - name: Run autobuild configure (Mac)
+      if: runner.os == 'macOS'
+      run: autobuild configure --verbose -A ${{ env.ADDRESS_SIZE }} -c ${{ env.BUILD_CONFIG }} -- ${{ github.event.inputs.grid == 'secondlife' && '-DHAVOK_TPV=true --no-opensim' || '-DHAVOK_TPV=false --opensim' }} --package --chan "${{ env.VIEWER_CHANNEL }}"
 
-        - name: publish ${{ matrix.os }} artifacts
-          if: runner.os == 'Linux'
-          uses: actions/upload-artifact@v3
-          with:
-            name: ${{ matrix.os }}-${{matrix.addrsize}}-${{matrix.grid}}-artifacts.zip
-            path: build-linux-*/newview/*.xz
+    - name: Run autobuild build
+      run: autobuild build -A ${{ env.ADDRESS_SIZE }} -c ${{ env.BUILD_CONFIG }} --no-configure
 
-        - name: publish ${{ matrix.os }} artifacts
-          if: runner.os == 'macOS'
-          uses: actions/upload-artifact@v3
-          with:
-            name: ${{ matrix.os }}-${{matrix.addrsize}}-${{matrix.grid}}-artifacts.zip
-            path: build-darwin-*/newview/*.dmg
+    - name: Create artifact (Mac)
+      if: runner.os == 'macOS'
+      run: |
+        tar -cvzf ./"${VIEWER_CHANNEL}-$(cat ./indra/newview/VIEWER_VERSION.txt).${AUTOBUILD_BUILD_ID}-${RUNNER_OS}${ADDRESS_SIZE}-${{github.event.inputs.grid}}.tar.gz" ./build-darwin-x86_64/newview/*.dmg
+      shell: bash
+
+    - name: Publish artifact
+      uses: ./dep/action-scp
+      with:
+        key: ${{ secrets.SCP_KEY }}
+        source_file: ./*.tar.gz
+        destination_host: ${{ secrets.SCP_HOST }}
+        destination_username: ${{ secrets.SCP_USER }}
+        destination_file: ${{ env.ARTIFACT_DST_PATH }}
