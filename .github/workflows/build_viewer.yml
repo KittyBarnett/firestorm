@@ -76,6 +76,24 @@ jobs:
         echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
         echo "DEPENDENCIES_SRC_PATH=/dependencies/${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
         echo "ARTIFACT_DST_PATH=/artifacts/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_ENV
+        echo "build_secrets_checkout=./dep/signing" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Install certificate
+        env:
+          FS_CERT: ${{ secrets.FS_CERT }}
+          FS_CERT_PASS: ${{ secrets.FS_PASS }}
+          FS_KEYCHAIN_PASS: ${{ secrets.FS_KEYCHAIN_PASS }}
+      run: |
+        mkdir -p ${build_secrets_checkout}/code-signing-osx
+        echo -n "$FS_CERT" | base64 --decode --output ${build_secrets_checkout}/code-signing-osx/fs-cert.p12
+        security create-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
+        security set-keychain-settings -lut 21600 ~/Library/Keychains/viewer.keychain
+        security unlock-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
+        # import certificate to keychain
+        security import ${build_secrets_checkout}/code-signing-osx/fs-cert.p12 -P "$FS_CERT_PASS" -A -t cert -f pkcs12 -k ~/Library/Keychains/viewer.keychain
+        security list-keychain -d user -s ~/Library/Keychains/viewer.keychain
+          
       shell: bash
 
     - name: Download private packages
