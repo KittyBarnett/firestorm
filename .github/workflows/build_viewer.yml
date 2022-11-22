@@ -86,12 +86,10 @@ jobs:
         FS_KEYCHAIN_PASS: ${{ secrets.FS_KEYCHAIN_PASS }}
       run: |
         mkdir -p ${build_secrets_checkout}/code-signing-osx
-        echo "$FS_CERT_PASS" > ${build_secrets_checkout}/code-signing-osx/password.txt
         echo -n "$FS_CERT" | base64 --decode --output ${build_secrets_checkout}/code-signing-osx/fs-cert.p12
         security create-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
         security set-keychain-settings -lut 21600 ~/Library/Keychains/viewer.keychain
         security unlock-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
-        # import certificate to keychain
         security import ${build_secrets_checkout}/code-signing-osx/fs-cert.p12 -P "$FS_CERT_PASS" -A -t cert -f pkcs12 -k ~/Library/Keychains/viewer.keychain
         security list-keychain -d user -s ~/Library/Keychains/viewer.keychain
           
@@ -105,6 +103,15 @@ jobs:
         source_username: ${{ secrets.SCP_USER }}
         source_file: ${{ env.DEPENDENCIES_SRC_PATH }}/packages/*
         destination_file: './dep/packages/'
+
+    - name: Download temp
+      uses: ./dep/action-scp
+      with:
+        key: ${{ secrets.SCP_KEY }}
+        source_host: ${{ secrets.SCP_HOST }}
+        source_username: ${{ secrets.SCP_USER }}
+        source_file: ${{ env.DEPENDENCIES_SRC_PATH }}/code-signing/code-signing-osx/*
+        destination_file: './dep/signing/code-signing-osx/'
 
     - name: Install Python
       uses: actions/setup-python@v2
