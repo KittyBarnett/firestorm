@@ -86,6 +86,7 @@ jobs:
         FS_KEYCHAIN_PASS: ${{ secrets.FS_KEYCHAIN_PASS }}
       run: |
         mkdir -p ${build_secrets_checkout}/code-signing-osx
+        echo "$FS_CERT_PASS" > ${build_secrets_checkout}/code-signing-osx/password.txt
         echo -n "$FS_CERT" | base64 --decode --output ${build_secrets_checkout}/code-signing-osx/fs-cert.p12
         security create-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
         security set-keychain-settings -lut 21600 ~/Library/Keychains/viewer.keychain
