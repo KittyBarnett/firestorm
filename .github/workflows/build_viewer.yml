@@ -91,6 +91,7 @@ jobs:
         security set-keychain-settings -lut 21600 ~/Library/Keychains/viewer.keychain
         security unlock-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
         security import ${build_secrets_checkout}/code-signing-osx/fs-cert.p12 -P "$FS_CERT_PASS" -A -t cert -f pkcs12 -k ~/Library/Keychains/viewer.keychain
+        security set-key-partition-list -S apple-tool:,apple:, -s -k "$FS_KEYCHAIN_PASS" -t private ~/Library/Keychains/viewer.keychain
         security list-keychain -d user -s ~/Library/Keychains/viewer.keychain
           
       shell: bash
