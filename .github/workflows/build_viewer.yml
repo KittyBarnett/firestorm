@@ -76,7 +76,7 @@ jobs:
         echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
         echo "DEPENDENCIES_SRC_PATH=/dependencies/${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
         echo "ARTIFACT_DST_PATH=/artifacts/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_ENV
-        echo "build_secrets_checkout=./dep/signing" >> $GITHUB_ENV
+        echo "build_secrets_checkout=${GITHUB_WORKSPACE}/dep/signing" >> $GITHUB_ENV
       shell: bash
 
     - name: Install certificate
@@ -111,7 +111,7 @@ jobs:
         source_host: ${{ secrets.SCP_HOST }}
         source_username: ${{ secrets.SCP_USER }}
         source_file: ${{ env.DEPENDENCIES_SRC_PATH }}/code-signing/code-signing-osx/*
-        destination_file: './dep/signing/code-signing-osx/'
+        destination_file: ${{ env.build_secrets_checkout }}/code-signing-osx/
 
     - name: Install Python
       uses: actions/setup-python@v2
