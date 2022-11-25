@@ -1800,17 +1800,20 @@ class DarwinManifest(ViewerManifest):
                         try:
                             # Note: See blurb above about names of keychains
                             for signee in plain_sign:
+                                print("Attempting to sign '%s'" % signee)
                                 self.run_command(
                                     ['codesign',
+                                     '--verbose=4',
                                      '--force',
                                      '--timestamp',
                                      '--keychain', viewer_keychain,
                                      '--sign', identity,
                                      signee])
                             for signee in deep_sign:
+                                print("Attempting to sign '%s'" % signee)
                                 self.run_command(
                                     ['codesign',
-                                     '--verbose',
+                                     '--verbose=4',
                                      '--deep',
                                      '--force',
                                      '--entitlements', self.src_path_of("slplugin.entitlements"),
