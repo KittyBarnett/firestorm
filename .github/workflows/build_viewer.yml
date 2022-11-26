@@ -84,19 +84,18 @@ jobs:
         FS_CERT: ${{ secrets.FS_CERT }}
         FS_CERT_PASS: ${{ secrets.FS_PASS }}
         FS_KEYCHAIN_PASS: ${{ secrets.FS_KEYCHAIN_PASS }}
-        KEYCHAIN_PATH: "~/Library/Keychains/viewer.keychain"
         NOTARIZE_CREDS: ${{ secrets.NOTARIZE_CREDS }}
       run: |
         mkdir -p ${build_secrets_checkout}/code-signing-osx
         echo -n "$FS_CERT" | base64 --decode --output ${build_secrets_checkout}/code-signing-osx/fs-cert.p12
         echo -n "$FS_CERT_PASS" | base64 --decode --output ${build_secrets_checkout}/code-signing-osx/password.txt
         echo -n "$NOTARIZE_CREDS" | base64 --decode --output ${build_secrets_checkout}/code-signing-osx/notarize_creds.sh
-        security create-keychain -p "$FS_KEYCHAIN_PASS" "$KEYCHAIN_PATH"
-        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-        security unlock-keychain -p "$FS_KEYCHAIN_PASS" "$KEYCHAIN_PATH"
-        security import ${build_secrets_checkout}/code-signing-osx/fs-cert.p12 -P "$FS_CERT_PASS" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-        security set-key-partition-list -S apple-tool:,apple:, -s -k "$FS_KEYCHAIN_PASS" -t private "$KEYCHAIN_PATH"
-        security list-keychain -d user -s "$KEYCHAIN_PATH"
+        security create-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
+        security set-keychain-settings -lut 21600 ~/Library/Keychains/viewer.keychain
+        security unlock-keychain -p "$FS_KEYCHAIN_PASS" ~/Library/Keychains/viewer.keychain
+        security import ${build_secrets_checkout}/code-signing-osx/fs-cert.p12 -P "$FS_CERT_PASS" -A -t cert -f pkcs12 -k ~/Library/Keychains/viewer.keychain
+        security set-key-partition-list -S apple-tool:,apple:, -s -k "$FS_KEYCHAIN_PASS" -t private ~/Library/Keychains/viewer.keychain
+        security list-keychain -d user -s ~/Library/Keychains/viewer.keychain
           
       shell: bash
 
